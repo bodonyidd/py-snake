@@ -1,17 +1,10 @@
 import __future__
 import copy
+import time
 import keyboard
 import random
 import os
-
-
-# def clear_console(is_moved=False):
-#     if is_moved:
-#         # Clear the console screen based on the OS
-#         if os.name == 'posix':
-#             os.system('clear')  # For UNIX-like systems (Linux, macOS)
-#         elif os.name == 'nt':
-#             os.system('cls')    # For Windows
+import threading
 
 HEIGHT=20
 WIDTH=50
@@ -32,49 +25,22 @@ def create_rows():
   return rows
 rows=create_rows()
 
-
-# def draw_table(tabla):
-#   first_row_length=len(tabla[0])
-#   point_row=[" " for _ in range(first_row_length)]
-#   text=list("point: 5")
-#   for i in range(len(text)):
-#       point_row[i]=text[i]
-#   print("".join(point_row))
-
-#   for i in range(len(tabla)):
-#     print("".join(tabla[i]))
-
-
 start_point_x=int((WIDTH-2)/2) # "-2"  are the first and the last string: '|'
 start_point_y=int((HEIGHT-2)/2) # "-2"  are the first and the last row: '-'
 rows[start_point_y][start_point_x]="O"
 start_snake_length=1
 snake_pos=[[start_point_y,start_point_x]]
 
-apple_x=random.randint(1,WIDTH-2)
-apple_y=random.randint(1,HEIGHT-2)
-# rows[apple_y][apple_x]="x"
-rows[9][26]="x"
-rows[9][29]="x"
-rows[9][37]="x"
 
 class Snake:
     HEIGHT=20
     WIDTH=50
-
     start_point_x=int((WIDTH-2)/2) # "-2"  are the first and the last string: '|'
     start_point_y=int((HEIGHT-2)/2) # "-2"  are the first and the last row: '-'
     rows[start_point_y][start_point_x]="O"
     start_snake_length=1
     snake_pos=[[start_point_y,start_point_x]]
-
-    apple_x=random.randint(1,WIDTH-2)
-    apple_y=random.randint(1,HEIGHT-2)
-    # rows[apple_y][apple_x]="x"
     rows[9][26]="x"
-    rows[9][29]="x"
-    rows[15][37]="x"
-
 
     def __init__(self) -> None:
         self.snake_length=1
@@ -83,12 +49,12 @@ class Snake:
         self.snake_coord=[[self.y,self.x]]
         self.rows=rows
         self.is_game=True
-        self.apple_x=apple_x
-        self.apple_y=apple_y
         self.last_snake_coords=[]
-        self.last_movement=None
+        self.last_movement="RIGHT"
         self.points=0
-    
+        self.stop_program = False
+        self.speed=0.27
+
     def clear_console(self,is_moved=False):
         if is_moved:
             # Clear the console screen based on the OS
@@ -113,18 +79,44 @@ class Snake:
     rows=create_rows()
 
 
+
     def draw_table(self,tabla):
-        # point
-        first_row_length=len(tabla[0]) #width
-        point_row=[" " for _ in range(first_row_length)]
-        text=list(f"point: {self.points}")
-        for i in range(len(text)):
-            point_row[i]=text[i]
-        print("".join(point_row))
-        
+        header_text:str=f"Points: {self.points} \t Press 'Esc' to stop the game."
+        print(header_text)
+
         # tabla
         for i in range(len(tabla)):
             print("".join(tabla[i]))
+
+    def update_position(self, direction):
+        # current_time = time.time()
+        # if current_time - self.cooldown > self.last_update_time:
+            if direction == "LEFT":
+                self.move_left()
+            elif direction == "RIGHT":
+                self.move_right()
+            elif direction == "UP":
+                self.move_up()
+            elif direction == "DOWN":
+                self.move_down()
+            # self.last_update_time = current_time
+
+    def handle_key_press(self, key):
+        # NOTE: innen a move-okat majd ki kell szedni
+        if key.name == "left":        
+            self.last_movement="LEFT"
+            self.move_left()
+        elif key.name == "right":
+            self.last_movement="RIGHT"
+            self.move_right()
+        elif key.name == "up":
+            self.last_movement="UP"
+            self.move_up()
+        elif key.name == "down":
+            self.last_movement="DOWN"
+            self.move_down()
+        elif key.name == "esc":
+            s.stop_program=True
 
     def moving(func):
         def wrapper(self,*args, **kwargs):
@@ -132,11 +124,11 @@ class Snake:
             self.clear_console(True)
             self.draw_table(self.rows)
             # print(self.snake_coord)
-            return rows
+            return
         return wrapper
 
-    def is_next_border(self,new_y,new_x):
-        if self.rows[new_y][new_x]=="-" or rows[new_y][new_x]=="|":
+    def is_next_border_or_snake(self,new_y,new_x):
+        if self.rows[new_y][new_x]=="-" or rows[new_y][new_x]=="|" or self.rows[new_y][new_x]=="O":
             return True
         return False
 
@@ -151,34 +143,51 @@ class Snake:
         for i in self.snake_coord:
             self.rows[i[0]][i[1]] = "O"
         self.rows[z[0]][z[1]] = " "
-
-    @moving
-    def move_right(self):
-        if self.last_movement=="LEFT":
-            raise ValueError
-        new_y=copy.deepcopy(self.y) #start 9 
-        new_x=copy.deepcopy(self.x+1) # start 24
-        self.movement(new_y=new_y,new_x=new_x)
-        self.last_movement="RIGHT"
+    
+    def generate_random_apple_point(self)->tuple[int,int]:
+        apple_x=random.randint(1,WIDTH-2)
+        apple_y=random.randint(1,HEIGHT-2)
+        if self.rows[apple_y][apple_x]=="x" or self.rows[apple_y][apple_x]=="-" or rows[apple_y][apple_x]=="|" or self.rows[apple_y][apple_x]=="O":
+            print("apple random utkozesZUHJIOEERTZUIGHJKGHJKDFGHJKLERTZUIOPCVBNM")
+            self.generate_random_apple_point()
+            # NOTE: mikor már telített a tábla,az utolsó kis terület is filled akkor ez lehet hibát dob
+        else:
+            return apple_y,apple_x
+        
+    def draw_new_apple(self,apple_y,apple_x):
+        self.rows[apple_y][apple_x] = "x"
 
     def movement(self,new_y,new_x):
-        if self.is_next_border(new_y,new_x):
-            raise ValueError
+        if self.is_next_border_or_snake(new_y,new_x):
+            s.stop_program=True
         self.last_snake_coords=copy.deepcopy(self.snake_coord)
         if self.check_apple(new_y,new_x):
             self.snake_length=self.snake_length+1
             self.snake_coord.insert(0,[self.snake_coord[0][0]-1,self.snake_coord[0][1]-1])
             self.points=self.points+1
+            apple_y,apple_x=self.generate_random_apple_point()
+            self.draw_new_apple(apple_y,apple_x)
+            self.speed=self.speed-0.02
         self.snake_coord.append([new_y,new_x])
         self.create_snake()
-
         self.y=copy.deepcopy(new_y)
         self.x=copy.deepcopy(new_x)
 
     @moving
+    def move_right(self):
+        if self.last_movement=="LEFT":
+            self.stop_program=True
+            return
+        new_y=copy.deepcopy(self.y) #start 9 
+        new_x=copy.deepcopy(self.x+1) # start 24
+        self.movement(new_y=new_y,new_x=new_x)
+        self.last_movement="RIGHT"
+
+    @moving
     def move_up(self):
         if self.last_movement=="DOWN":
-            raise ValueError
+            self.stop_program=True
+            return
         new_y=copy.deepcopy(self.y-1) #start 9 
         new_x=copy.deepcopy(self.x) # start 24
         self.movement(new_y=new_y,new_x=new_x)
@@ -187,7 +196,8 @@ class Snake:
     @moving
     def move_down(self):
         if self.last_movement=="UP":
-            raise ValueError
+            self.stop_program=True
+            return
         new_y=copy.deepcopy(self.y+1) #start 9 
         new_x=copy.deepcopy(self.x) # start 24
         self.movement(new_y=new_y,new_x=new_x)
@@ -196,48 +206,13 @@ class Snake:
     @moving
     def move_left(self):
         if self.last_movement=="RIGHT":
-            raise ValueError
+            self.stop_program=True
+            return
         new_y=copy.deepcopy(self.y) #start 9 
         new_x=copy.deepcopy(self.x-1) # start 24
         self.movement(new_y=new_y,new_x=new_x)
         self.last_movement="LEFT"
         
-    
-
-global game
-game=True
-
-# def is_next_border(rows,new_y,new_x):
-#     if rows[new_y][new_x]=="-" or rows[new_y][new_x]=="|":
-#           return True
-
-# def check_apple(rows,new_y,new_x):
-#     if rows[new_y][new_x]=="x":
-#         return True
-#     else:
-#         return False
-
-
-# def moving(func):
-#     def wrapper(*args, **kwargs):
-#         rows,y,x = func(*args, **kwargs)
-#         clear_console(True)
-#         draw_table(rows)
-#         return rows,y,x
-#     return wrapper
-
-# @moving
-# def move_right(rows,y,x):
-#     new_y=y
-#     new_x=x+1
-#     if is_next_border(rows,new_y,new_x):
-#         raise ValueError
-#     if check_apple(rows,new_y,new_x):
-#         pass
-#     rows[new_y][new_x-1]=" "
-#     rows[new_y][new_x]="O"
-#     return rows,new_y,new_x
-
 
         
 new_y=start_point_y
@@ -246,57 +221,45 @@ x=start_point_x
 y=start_point_y
 
 s=Snake()
+
+
+global asd
+asd=keyboard
+
+global key_listener_thread
+
 try:
-    while game:
+
+    def key_listener():
+        asd.on_press(s.handle_key_press)
+
+    # Create a thread for the key listener
+    key_listener_thread = threading.Thread(target=key_listener)
+    key_listener_thread.start()
+
+    while not s.stop_program:
         s.clear_console(True)
         s.draw_table(rows)
-        key_event = keyboard.read_event(suppress=True)
-
-        if key_event.event_type == keyboard.KEY_DOWN and key_event.name=="right":
-            s.move_right()
-            
-            
-        elif key_event.event_type == keyboard.KEY_DOWN and key_event.name=="left":
-            s.move_left()
-
-        elif key_event.event_type == keyboard.KEY_DOWN and key_event.name=="up":
-            s.move_up()
-
-        elif key_event.event_type == keyboard.KEY_DOWN and key_event.name=="down":
-            s.move_down()
+        s.update_position(direction=s.last_movement)
+        time.sleep(s.speed)
+    key_listener_thread.join()
+    print("Game over! Earned points: {}".format(s.points))
 except ValueError:
-    game=False
-    s.clear_console(True)
+    # s.clear_console(True)
     print("Game over! Earned points: {}".format(s.points))
 
 
-# TODO:
-    # - Generálni apple pointot, olyat ami intervallumban esik (DONE) és nem "O" (ha O akkor  generáljon újat)
-    # - movementeknél kell ellenőrzés hogy a következő "O" -e mert akkor failelni a kell
-    # - pointot kell kiírni
-    # - automattikusan kéne a cuccnak elindulnia jobbra és ha felszed egy hamit akkor mindig egyre gyorsabban mennie
-    # - egy irányba induljon el és akkor mindig arra felé tendáljon folyamotsan 
+# NOTE:
+    # generate_random_apple_point() is maybe raising error
+    #   if the generated value is in the snake's body
 
-
+    # clean code
+    # prohibit the snake to go to opposite direction even if it is 1 long
+    # lehetne nehézség kiválasztás és akkor 
+    # pl easy kezdő seb: 0.25
+    #  hard kezdő seb 0.17 ...
 # ----------------------------------------------------
 
-def generate_random_apple_point():
-    apple_x=random.randint(1,WIDTH-2)
-    apple_y=random.randint(1,HEIGHT-2)
-    return apple_y,apple_x
-
-def reset_last_apple_point(rows,apple_y,apple_x):
-   rows[apple_y][apple_x]=" "
-   return rows
-
-# import time
-# for i in range(10000):
-#    apple_x=random.randint(1,WIDTH-2)
-#    apple_y=random.randint(1,HEIGHT-2)
-#    rows[apple_y][apple_x]="x"
-# #    time.sleep(0.1)
-#    draw_table(rows)
-# #    rows[apple_y][apple_x]=" "
 
 
 
